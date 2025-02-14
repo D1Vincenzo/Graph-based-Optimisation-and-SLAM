@@ -4,7 +4,6 @@ import ebe.core.*;
 import ebe.graphics.*;
 import cw1.*;
 
-Aaaaaaaaaaaaaaaaaaaa im a snake !!!!!!!!!!!!!!!!!!!
 
 % Find, load and parse the configuration file
 config = ebe.utils.readJSONFile('config/q1_b.json');
