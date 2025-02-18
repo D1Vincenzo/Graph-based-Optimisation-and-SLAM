@@ -80,5 +80,3 @@ for e = 1 : numel(resultsAccumulator.xEstStore)
         title(stateLabels{f}, 'Interpreter','latex')
     end
 end
-
-11111
