@@ -60,10 +60,24 @@ classdef PlatformPredictionEdge < g2o.core.BaseBinaryEdge
             %   an estimate of the platform at time x_(k) and the control
             %   input u_(k+1)
 
-            warning('PlatformPredictionEdge.initialEstimate: implement')
+            %%% warning('PlatformPredictionEdge.initialEstimate: implement')
 
             % Compute the posterior assming no noise
-            obj.edgeVertices{2}.x = zeros(3, 1);
+            x_k = obj.edgeVertices{1}.x; % current stage (x_k=[x_k, y_k, psi_k])
+            psi_k = x_k(3);
+            u_k = obj.measurement; % The control input
+            deltaT = obj.dT;
+
+
+            M = deltaT*[cos(psi_k), -sin(psi_k), 0;
+                        sin(psi_k),  cos(psi_k), 0;
+                        0, 0, 1];
+
+            x_k1 = x_k + M*u_k;  % assming no noise
+
+            % Assign computed state to the next vertex
+            obj.edgeVertices{2}.x = x_k1; 
+
         end
         
         function computeError(obj)
@@ -79,9 +93,14 @@ classdef PlatformPredictionEdge < g2o.core.BaseBinaryEdge
             %   equation has to be rearranged to make the error the subject
             %   of the formulat
                        
-            warning('PlatformPredictionEdge.computeError: implement')
+            %%% warning('PlatformPredictionEdge.computeError: implement')
+            obj.initialEstimate();
 
-            obj.errorZ = 0;
+            x_k1 = obj.edgeVertices{2}.x;  % Next state from graph
+
+            predicted_x_k1 = obj.edgeVertices{2}.x;  % predict next stage with initialEstimate()
+            obj.errorZ = x_k1 - predicted_x_k1; 
+
         end
         
         % Compute the Jacobians
@@ -97,11 +116,27 @@ classdef PlatformPredictionEdge < g2o.core.BaseBinaryEdge
             %   respect to both of them must be computed.
             %
 
-            warning('PlatformPredictionEdge.linearizeOplus: implement')
+            %%% warning('PlatformPredictionEdge.linearizeOplus: implement')
+            obj.computeError();
 
-            obj.J{1} = -eye(3);
+            % Compute Jacobian w.r.t. u_k (control input)
+            x_k = obj.edgeVertices{1}.x; % current stage (x_k=[x_k, y_k, psi_k])
+            psi_k = x_k(3);
+            deltaT = obj.dT;
 
-            obj.J{2} = eye(3);
+            M = deltaT*[cos(psi_k), -sin(psi_k), 0;
+                        sin(psi_k),  cos(psi_k), 0;
+                        0, 0, 1];
+
+            J_x = -inv(M);  % Negative identity since we are computing error
+            %J_u = M;  % Since x_k1 = x_k + M * u_k
+        
+            % Compute Jacobian w.r.t. x_k1 (J{2})
+            J_x1 = inv(M);  % Identity since x_k1 directly contributes to itself
+        
+            % Store Jacobians
+            obj.J{1} = J_x ;  % Influence of previous state and control input
+            obj.J{2} = J_x1;  % Influence of next state
         end
     end    
 end
