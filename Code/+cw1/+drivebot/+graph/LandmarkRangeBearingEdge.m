@@ -61,11 +61,36 @@ classdef LandmarkRangeBearingEdge < g2o.core.BaseBinaryEdge
             % Description:
             %   Compute the initial estimate of the landmark given the
             %   platform pose and observation.
+            
+            % warning('LandmarkRangeBearingEdge.initialEstimate: implement')
+            % 
+            % lx = obj.edgeVertices{1}.x(1:2);
+            % obj.edgeVertices{2}.setEstimate(lx);
 
-            warning('LandmarkRangeBearingEdge.initialEstimate: implement')
-
-            lx = obj.edgeVertices{1}.x(1:2);
-            obj.edgeVertices{2}.setEstimate(lx);
+            % Retrieve vehicle pose x_(k+1) = [x, y, psi] (Section A.1)
+            % psi & beta (used in MATLAB codes) are the same
+            vehiclePose = obj.edgeVertices{1}.estimate;
+            % disp(vehiclePose);
+            x_k1 = vehiclePose(1);
+            y_k1 = vehiclePose(2);
+            psi_k1 = vehiclePose(3);
+            
+            % Retrieve sensor measurements z_(k+1)
+            measurement = obj.z;
+            r_k1 = measurement(1);  % range
+            beta_k1 = measurement(2);  % bearing
+            
+            % % Print measurement values for debugging
+            % z_dash = obj.measurement;
+            % disp(z_dash);
+            
+            % Compute landmark position
+            l_x = x_k1 + r_k1 * cos(beta_k1 + psi_k1);
+            l_y = y_k1 + r_k1 * sin(beta_k1 + psi_k1);
+            
+            % Assign the estimated landmark position
+            obj.edgeVertices{2}.setEstimate([l_x; l_y]);
+            
         end
         
         function computeError(obj)
@@ -78,9 +103,25 @@ classdef LandmarkRangeBearingEdge < g2o.core.BaseBinaryEdge
             %   Compute the value of the error, which is the difference
             %   between the predicted and actual range-bearing measurement.
 
-            warning('LandmarkRangeBearingEdge.computeError: implement')
-           
-            obj.errorZ = zeros(2, 1);
+            % warning('LandmarkRangeBearingEdge.computeError: implement')
+            % 
+            % obj.errorZ = zeros(2, 1);
+
+            x_k1 = obj.edgeVertices{1}.estimate;
+            l_k1 = obj.edgeVertices{2}.estimate;
+            
+            % Compute differences
+            dx = l_k1(1) - x_k1(1);
+            dy = l_k1(2) - x_k1(2);
+            
+            % Predicted measurements
+            r_pred = sqrt(dx^2 + dy^2);
+            beta_pred = atan2(dy, dx) - x_k1(3);
+            
+            % Error
+            obj.errorZ(1) = -obj.z(1) + r_pred;
+            obj.errorZ(2) = g2o.stuff.normalize_theta(-obj.z(2) + beta_pred);
+            
         end
         
         function linearizeOplus(obj)
@@ -94,11 +135,45 @@ classdef LandmarkRangeBearingEdge < g2o.core.BaseBinaryEdge
             %   the vertex.
             %
 
-            warning('LandmarkRangeBearingEdge.linearizeOplus: implement')
+            % warning('LandmarkRangeBearingEdge.linearizeOplus: implement')
+            % 
+            % obj.J{1} = eye(2, 3);
+            % 
+            % obj.J{2} = eye(2);
 
-            obj.J{1} = eye(2, 3);
+            x_k1 = obj.edgeVertices{1}.estimate;
+            l_k1 = obj.edgeVertices{2}.estimate;
             
-            obj.J{2} = eye(2);
+            % Compute differences
+            dx = l_k1(1) - x_k1(1);
+            dy = l_k1(2) - x_k1(2);
+            
+            % Predicted range
+            r_pred = sqrt(dx^2 + dy^2);
+            r_sq = max(r_pred^2, 1e-6);
+            
+            % Compute Jacobians
+            J1 = zeros(2, 3); % with respect to x_k+1
+            J2 = zeros(2, 2); % with respect to l_k+1
+            
+            J1(1, 1) = -dx / r_pred;
+            J1(1, 2) = -dy / r_pred;
+            J1(1, 3) = 0;
+            
+            J1(2, 1) = dy / r_sq;
+            J1(2, 2) = -dx / r_sq;
+            J1(2, 3) = -1;
+            
+            J2(1, 1) = dx / r_pred;
+            J2(1, 2) = dy / r_pred;
+            
+            J2(2, 1) = -dy / r_sq;
+            J2(2, 2) = dx / r_sq;
+            
+            % Assign Jacobians
+            obj.J{1} = J1;
+            obj.J{2} = J2;
+
         end        
     end
 end
