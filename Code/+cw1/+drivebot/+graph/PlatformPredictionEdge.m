@@ -115,7 +115,10 @@ classdef PlatformPredictionEdge < g2o.core.BaseBinaryEdge
             disp(['Determinant of M: ', num2str(det_M)]);
 
             % obj.errorZ = pinv(M) \ (x_k1 - x_k);
-            obj.errorZ = (M \ (x_k1 - x_k)) - u_k;
+            % obj.errorZ = (M \ (x_k1 - x_k)) - u_k;
+
+            x_k = x_k + M * u_k;
+            obj.errorZ = M \ (x_k1 - x_k);
 
             % x_k1 = obj.edgeVertices{2}.x;  % Next state from graph
             % 
