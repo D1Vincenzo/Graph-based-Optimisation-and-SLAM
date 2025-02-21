@@ -96,30 +96,31 @@ classdef PlatformPredictionEdge < g2o.core.BaseBinaryEdge
             %   equation has to be rearranged to make the error the subject
             %   of the formulat
             
-            % x_k = obj.edgeVertices{1}.x; % current stage (x_k=[x_k, y_k, psi_k])
-            % psi_k = x_k(3);
+            x_k = obj.edgeVertices{1}.x; % current stage (x_k=[x_k, y_k, psi_k])
+            psi_k = x_k(3);
+            x_k1 = obj.edgeVertices{2}.x;  % Next state from graph
+            u_k = obj.z;
+
+            if isfield(obj.edgeVertices{1}, 'time') && isfield(obj.edgeVertices{2}, 'time')
+                deltaT = abs(obj.edgeVertices{2}.time - obj.edgeVertices{1}.time);
+            else
+                deltaT = obj.dT;
+            end
+
+            M = deltaT*[cos(psi_k), -sin(psi_k), 0;
+                        sin(psi_k),  cos(psi_k), 0;
+                        0, 0, 1];
+
+            det_M = det(M); % 計算行列式
+            disp(['Determinant of M: ', num2str(det_M)]);
+
+            % obj.errorZ = pinv(M) \ (x_k1 - x_k);
+            obj.errorZ = (M \ (x_k1 - x_k)) - u_k;
+
             % x_k1 = obj.edgeVertices{2}.x;  % Next state from graph
             % 
-            % if isfield(obj.edgeVertices{1}, 'time') && isfield(obj.edgeVertices{2}, 'time')
-            %     deltaT = abs(obj.edgeVertices{2}.time - obj.edgeVertices{1}.time);
-            % else
-            %     deltaT = obj.dT;
-            % end
-            % 
-            % M = deltaT*[cos(psi_k), -sin(psi_k), 0;
-            %             sin(psi_k),  cos(psi_k), 0;
-            %             0, 0, 1];
-            % 
-            % det_M = det(M); % 計算行列式
-            % disp(['Determinant of M: ', num2str(det_M)]);
-            % 
-            % 
-            % obj.errorZ = pinv(M) \ (x_k1 - x_k);
-
-            x_k1 = obj.edgeVertices{2}.x;  % Next state from graph
-
-            predicted_x_k1 = obj.edgeVertices{2}.x;  % predict next stage with initialEstimate()
-            obj.errorZ = x_k1 - predicted_x_k1; 
+            % predicted_x_k1 = obj.edgeVertices{2}.x;  % predict next stage with initialEstimate()
+            % obj.errorZ = x_k1 - predicted_x_k1; 
 
 
         end
