@@ -60,20 +60,23 @@ classdef PlatformPredictionEdge < g2o.core.BaseBinaryEdge
             %   an estimate of the platform at time x_(k) and the control
             %   input u_(k+1)
 
-            %%% warning('PlatformPredictionEdge.initialEstimate: implement')
-
             % Compute the posterior assming no noise
             x_k = obj.edgeVertices{1}.x; % current stage (x_k=[x_k, y_k, psi_k])
             psi_k = x_k(3);
             u_k = obj.measurement; % The control input
-            deltaT = obj.dT;
+            
+            if isfield(obj.edgeVertices{1}, 'time') && isfield(obj.edgeVertices{2}, 'time')
+                deltaT = abs(obj.edgeVertices{2}.time - obj.edgeVertices{1}.time);
+            else
+                deltaT = obj.dT;
+            end
 
 
             M = deltaT*[cos(psi_k), -sin(psi_k), 0;
                         sin(psi_k),  cos(psi_k), 0;
                         0, 0, 1];
 
-            x_k1 = x_k + M*u_k;  % assming no noise
+            x_k1 = x_k + M * u_k;  % assming no noise
 
             % Assign computed state to the next vertex
             obj.edgeVertices{2}.x = x_k1; 
@@ -92,14 +95,33 @@ classdef PlatformPredictionEdge < g2o.core.BaseBinaryEdge
             %   vertex. Note the error enters in a nonlinear manner, so the
             %   equation has to be rearranged to make the error the subject
             %   of the formulat
-                       
-            %%% warning('PlatformPredictionEdge.computeError: implement')
-            obj.initialEstimate();
-
+            
+            x_k = obj.edgeVertices{1}.x; % current stage (x_k=[x_k, y_k, psi_k])
+            psi_k = x_k(3);
             x_k1 = obj.edgeVertices{2}.x;  % Next state from graph
+            u_k = obj.z;
 
-            predicted_x_k1 = obj.edgeVertices{2}.x;  % predict next stage with initialEstimate()
-            obj.errorZ = x_k1 - predicted_x_k1; 
+            if isfield(obj.edgeVertices{1}, 'time') && isfield(obj.edgeVertices{2}, 'time')
+                deltaT = abs(obj.edgeVertices{2}.time - obj.edgeVertices{1}.time);
+            else
+                deltaT = obj.dT;
+            end
+
+            M = deltaT*[cos(psi_k), -sin(psi_k), 0;
+                        sin(psi_k),  cos(psi_k), 0;
+                        0, 0, 1];
+
+            det_M = det(M); % 計算行列式
+            disp(['Determinant of M: ', num2str(det_M)]);
+
+            % obj.errorZ = pinv(M) \ (x_k1 - x_k);
+            obj.errorZ = (M \ (x_k1 - x_k)) - u_k;
+
+            % x_k1 = obj.edgeVertices{2}.x;  % Next state from graph
+            % 
+            % predicted_x_k1 = obj.edgeVertices{2}.x;  % predict next stage with initialEstimate()
+            % obj.errorZ = x_k1 - predicted_x_k1; 
+
 
         end
         
@@ -114,29 +136,16 @@ classdef PlatformPredictionEdge < g2o.core.BaseBinaryEdge
             %   Compute the Jacobians for the edge. Since we have two
             %   vertices which contribute to the edge, the Jacobians with
             %   respect to both of them must be computed.
-            %
 
-            %%% warning('PlatformPredictionEdge.linearizeOplus: implement')
-            obj.computeError();
-
-            % Compute Jacobian w.r.t. u_k (control input)
-            x_k = obj.edgeVertices{1}.x; % current stage (x_k=[x_k, y_k, psi_k])
-            psi_k = x_k(3);
-            deltaT = obj.dT;
-
-            M = deltaT*[cos(psi_k), -sin(psi_k), 0;
-                        sin(psi_k),  cos(psi_k), 0;
-                        0, 0, 1];
-
-            J_x = -inv(M);  % Negative identity since we are computing error
-            %J_u = M;  % Since x_k1 = x_k + M * u_k
-        
-            % Compute Jacobian w.r.t. x_k1 (J{2})
-            J_x1 = inv(M);  % Identity since x_k1 directly contributes to itself
-        
+            % Since computeError() now applies inv(M), J_x should just be -I
+            J_x = -eye(3);
+            
+            % Jacobian w.r.t. x_k1 is identity since x_k1 directly contributes to itself
+            J_x1 = eye(3);
+            
             % Store Jacobians
-            obj.J{1} = J_x ;  % Influence of previous state and control input
-            obj.J{2} = J_x1;  % Influence of next state
+            obj.J{1} = J_x;  % Influence of previous state
+            obj.J{2} = J_x1; % Influence of next state
         end
     end    
 end
