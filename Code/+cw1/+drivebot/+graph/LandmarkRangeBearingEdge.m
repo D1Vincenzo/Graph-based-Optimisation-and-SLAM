@@ -68,7 +68,6 @@ classdef LandmarkRangeBearingEdge < g2o.core.BaseBinaryEdge
             % obj.edgeVertices{2}.setEstimate(lx);
 
             % Retrieve vehicle pose x_(k+1) = [x, y, psi] (Section A.1)
-            % psi & beta (used in MATLAB codes) are the same
             vehiclePose = obj.edgeVertices{1}.estimate;
             % disp(vehiclePose);
             x_k1 = vehiclePose(1);
