@@ -121,7 +121,7 @@ classdef LandmarkRangeBearingEdge < g2o.core.BaseBinaryEdge
             % Error (prediction - observation)
             % similar to lab 4 activity 5 (g2o optimization)
             obj.errorZ(1) = r_pred - obj.z(1);
-            obj.errorZ(2) = g2o.stuff.normalize_theta(-obj.z(2) + beta_pred);
+            obj.errorZ(2) = g2o.stuff.normalize_theta(beta_pred - obj.z(2));
             
         end
         
